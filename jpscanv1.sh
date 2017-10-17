@@ -11,18 +11,19 @@
 get () {
     local name="$1"
     local chapter=$2
-    local directory="${3-$PWD}"
+    local directory="${3:-$PWD}"
     
     # URI to main page of chapter
     local URL="http://www.japscan.com/lecture-en-ligne/${name}/${chapter}"
 
     # directory of chapter
     directory="${directory}/${name}/${chapter}"
-	chapiter_exist $directory
+    directory="${directory// /-}"
+	chapiter_exist "$directory"
 	if [ $? -eq 1 ];then
-		init $directory
+		init "$directory"
 		echo "Get chapter ${chapter}..."
-		getPages $URL $name $chapter $directory
+		getPages "$URL" "$name" $chapter "$directory"
 	else
 		echo "You already have chapter ${chapter}"
 	fi
@@ -32,7 +33,7 @@ get () {
 # @param directory
 # @access private
 init(){
-	local directory=$1
+	local directory="$1"
 	if [ ! -d "${directory}" ]; then
         mkdir -p "${directory}"
 	fi
@@ -43,7 +44,7 @@ init(){
 # @return bool
 # @access private
 chapiter_exist(){
-	local directory=$1
+	local directory="$1"
 	if [ ! -d "${directory}" ]; then
         return 1
     else
@@ -67,19 +68,18 @@ getImageUrl () {
 # @return count
 # @access private
 getPageCount () {
-	local URL=$1
+	local URL="$1"
+	echo $URL
     local pages=$(wget -q "${URL}" -O - | grep -oP 'Page [0-9]+' | tail -1 | grep -oP '[0-9]+')
     return $pages;
 }
 
 # returns count of chapter
-# @param string URL of manga page
 # @param string manga name
 # @return count
 # @access private
 getChapterCount () {
-	local URL=$1
-	local name=$2
+	local name="$2"
     local ChapterCount=$(wget -q "http://www.japscan.com/lecture-en-ligne/${name}/" -O - | grep '<select name="chapitres" id="chapitres" data-uri="' | grep -oP "(?<=<select name=\"chapitres\" id=\"chapitres\" data-uri=\").*?(?=\")")
     return $ChapterCount;
 }
@@ -97,11 +97,11 @@ getPageUrl () {
 # @param url name chapter directory
 # @access private
 getPages () {
-	local URL=$1
-	local name=$2
+	local URL="$1"
+	local name="$2"
 	local chapter=$3
-	local directory=$4
-    getPageCount $URL
+	local directory="$4"
+    getPageCount "$URL"
     local pages=$?
     echo "Found ${pages} pages."
 
@@ -137,14 +137,14 @@ if [ "$1" = "-h" ] || [ "$1" = "--help" ] || [ "$1" = "usage" ];then
 	exit 0
 fi
 
-if [ ! $# -eq 1 ]; then
+if [ ! $# -lt 2 ]; then
 	usage
 fi
-URL="http://www.japscan.com/lecture-en-ligne/${1}"
-getChapterCount $URL $1
+
+getChapterCount "$1"
 chapter=$?
 echo $chapter
 for (( chap=1; chap<=$chapter; chap++ )); do
-	get $1 $chap $2
+	get "$1" $chap "$2"
 done;
 exit 0
